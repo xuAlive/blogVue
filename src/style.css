@@ -1,0 +1,16 @@
+*{
+  margin: 0px;
+  padding: 0px;
+  list-style: none;
+  text-decoration: none;
+  outline: none;
+  box-sizing: border-box;
+}
+@font-face {
+  font-family: xiaxingkai;
+  src: url("./assets/fonts/演示夏行楷.ttf");
+}
+@font-face {
+  font-family: honglei;
+  src: url("./assets/fonts/鸿雷板书简体.ttf");
+}

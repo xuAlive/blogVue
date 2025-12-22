@@ -1,0 +1,1 @@
+export const baseURL_test:string = 'http://127.0.0.1:6101/blog'
