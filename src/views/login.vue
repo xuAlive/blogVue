@@ -31,7 +31,7 @@
             <el-button type="primary" @click="submitForm(formRef)" style="width: 100%">登录</el-button>
           </el-form-item>
           <el-form-item>
-            <el-button @click="resetForm(formRef)" style="width: 100%">重置</el-button>
+            <el-button @click="handleRegister(formRef)" style="width: 100%">注册</el-button>
           </el-form-item>
         </el-form>
       </div>
@@ -47,6 +47,7 @@ import {reactive, ref} from 'vue'
 import type {FormInstance, FormRules} from 'element-plus'
 // 导入请求api
 import {$login} from "../api/admin";
+import {$register} from "../api/login";
 // 导入路由器
 import {useRouter} from "vue-router";
 // 返回路由器对象
@@ -101,10 +102,24 @@ const submitForm = (formEl: FormInstance | undefined) => {
     }
   })
 }
-// 重置表单
-const resetForm = (formEl: FormInstance | undefined) => {
+
+// 注册
+const handleRegister = (formEl: FormInstance | undefined) => {
   if (!formEl) return
-  formEl.resetFields()
+  formEl.validate(async (valid) => {
+    if (valid) {
+      const success = await $register(formData)
+      if (success) {
+        // 注册成功后自动登录
+        let ret = await $login(formData)
+        if (ret) {
+          router.push('/index/home')
+        }
+      }
+    } else {
+      return false
+    }
+  })
 }
 </script>
 <style scoped lang="sass">

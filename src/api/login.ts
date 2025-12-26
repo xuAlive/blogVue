@@ -1,4 +1,4 @@
-import { $get } from "../utils/request"
+import { $get, $post } from "../utils/request"
 import { ElMessage } from 'element-plus'
 
 /**
@@ -31,5 +31,26 @@ export const getLoginRecords = async (account?: string) => {
     console.error('获取登录记录失败:', error)
     ElMessage.error('获取登录记录失败')
     return []
+  }
+}
+
+/**
+ * 用户注册
+ * @param data 注册信息 { account, password }
+ */
+export const $register = async (data: { account: string; password: string }) => {
+  try {
+    const ret = await $post('/sys/register', data)
+    if (ret.code === 1) {
+      ElMessage.success('注册成功')
+      return true
+    } else {
+      ElMessage.error(ret.msg || '注册失败')
+      return false
+    }
+  } catch (error) {
+    console.error('注册失败:', error)
+    ElMessage.error('注册失败')
+    return false
   }
 }

@@ -64,12 +64,13 @@
                 placeholder="选择日期"
                 value-format="YYYY-MM-DD"
                 style="width: 100%"
+                @change="onBirthdayChange"
               />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="年龄">
-              <el-input-number v-model="formData.age" :min="0" :max="150" />
+              <el-input v-model="formData.age" disabled />
             </el-form-item>
           </el-col>
         </el-row>
@@ -132,6 +133,24 @@ const loadUserInfo = async () => {
 // 开始编辑
 const startEdit = () => {
   isEditing.value = true
+}
+
+// 根据出生日期计算年龄
+const calculateAge = (birthday: string): number => {
+  if (!birthday) return 0
+  const birthDate = new Date(birthday)
+  const today = new Date()
+  let age = today.getFullYear() - birthDate.getFullYear()
+  const monthDiff = today.getMonth() - birthDate.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--
+  }
+  return age
+}
+
+// 出生日期变化时自动计算年龄
+const onBirthdayChange = (value: string) => {
+  formData.value.age = calculateAge(value)
 }
 
 // 取消编辑
