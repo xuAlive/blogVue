@@ -1,41 +1,40 @@
 <template>
   <div class="index">
     <div class="left">
-      <h2>起飞博客</h2>
+      <h2>忘川阁</h2>
       <el-menu
           router="true"
           active-text-color="#ffa60f"
           background-color="#314a43"
-          default-active="2"
+          :default-active="currentPath"
           class="el-menu-vertical-demo"
       >
-        <el-sub-menu index="1">
-          <template #title>
-            <el-icon><HomeFilled /></el-icon>
-            <span>首页</span>
-          </template>
-          <el-menu-item index="/index/home">博客广场</el-menu-item>
-          <el-menu-item index="/index/miniapp">小程序</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu index="2">
-          <template #title>
-            <el-icon><UserFilled /></el-icon>
-            <span>个人博客</span>
-          </template>
-          <el-menu-item index="/index/blogInfo">我的家园</el-menu-item>
-          <el-menu-item index="/index/accountInfo">账号详情</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu index="3">
-          <template #title>
-            <el-icon><Tools /></el-icon>
-            <span>系统管理</span>
-          </template>
-          <el-menu-item index="/index/account">账号管理</el-menu-item>
-          <el-menu-item index="/index/menuManage">菜单管理</el-menu-item>
-          <el-menu-item index="/index/roleManage">角色管理</el-menu-item>
-          <el-menu-item index="/index/permissionManage">权限管理</el-menu-item>
-          <el-menu-item index="/index/loginList">登录信息</el-menu-item>
-        </el-sub-menu>
+        <!-- 动态渲染菜单 -->
+        <template v-for="menu in sideMenus" :key="menu.id">
+          <!-- 有子菜单的目录 -->
+          <el-sub-menu v-if="menu.children && menu.children.length > 0" :index="String(menu.id)">
+            <template #title>
+              <el-icon><component :is="getIconComponent(menu.icon)" /></el-icon>
+              <span>{{ menu.menuName }}</span>
+            </template>
+            <template v-for="child in menu.children" :key="child.id">
+              <el-menu-item
+                v-if="child.visible === 1"
+                :index="child.path"
+              >
+                {{ child.menuName }}
+              </el-menu-item>
+            </template>
+          </el-sub-menu>
+          <!-- 没有子菜单的菜单项 -->
+          <el-menu-item
+            v-else-if="menu.menuType === 2 && menu.visible === 1"
+            :index="menu.path"
+          >
+            <el-icon><component :is="getIconComponent(menu.icon)" /></el-icon>
+            <span>{{ menu.menuName }}</span>
+          </el-menu-item>
+        </template>
       </el-menu>
     </div>
     <div class="right">
@@ -47,13 +46,17 @@
           active-text-color="#ffd04b"
           router="true"
       >
-        <el-menu-item index="/index/mail"><el-icon><Message /></el-icon>邮件</el-menu-item>
-        <el-menu-item index="/index/message"><el-icon><ChatDotSquare /></el-icon>
-          消息</el-menu-item>
-        <el-sub-menu index="3">
-          <template #title><el-icon><Avatar /></el-icon>管理员</template>
-          <el-menu-item index="3-1">问题反馈</el-menu-item>
-          <el-menu-item index="3-2" @click="handleLogout">退出登录</el-menu-item>
+        <!-- 动态渲染顶部菜单（邮件、消息等） -->
+        <template v-for="menu in topMenus" :key="menu.id">
+          <el-menu-item :index="menu.path">
+            <el-icon><component :is="getIconComponent(menu.icon)" /></el-icon>
+            {{ menu.menuName }}
+          </el-menu-item>
+        </template>
+        <el-sub-menu index="user-menu">
+          <template #title><el-icon><Avatar /></el-icon>{{ userName }}</template>
+          <el-menu-item index="feedback">问题反馈</el-menu-item>
+          <el-menu-item index="logout" @click="handleLogout">退出登录</el-menu-item>
         </el-sub-menu>
 
       </el-menu></div>
@@ -65,12 +68,73 @@
   </div>
 </template>
 <script setup lang="ts">
-import {HomeFilled,UserFilled,Tools,Message,ChatDotSquare,Avatar} from '@element-plus/icons-vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, markRaw } from 'vue'
+import { HomeFilled, UserFilled, Tools, Message, ChatDotSquare, Avatar, House, Reading, Cellphone, Bell, Edit, HomeFilled as HomeFilledIcon, User, InfoFilled, Document, Menu as MenuIcon, Lock, Setting } from '@element-plus/icons-vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { clearUserInfo } from '../utils/userInfo'
+import { clearUserInfo, getUserMenus, getUserInfo } from '../utils/userInfo'
+import type { Menu } from '../api/menu'
 
 const router = useRouter()
+const route = useRoute()
+
+// 用户菜单数据
+const menus = ref<Menu[]>([])
+
+// 当前路径
+const currentPath = computed(() => route.path)
+
+// 用户名（优先级：昵称 > 真实姓名 > 账号）
+const userName = computed(() => {
+  const userInfo = getUserInfo()
+  return userInfo?.name || userInfo?.userName || userInfo?.account || '用户'
+})
+
+// 图标映射
+const iconMap: Record<string, any> = {
+  'el-icon-house': markRaw(House),
+  'el-icon-home-filled': markRaw(HomeFilled),
+  'el-icon-reading': markRaw(Reading),
+  'el-icon-cellphone': markRaw(Cellphone),
+  'el-icon-chat-dot-round': markRaw(ChatDotSquare),
+  'el-icon-message': markRaw(Message),
+  'el-icon-bell': markRaw(Bell),
+  'el-icon-edit': markRaw(Edit),
+  'el-icon-setting': markRaw(Setting),
+  'el-icon-user': markRaw(User),
+  'el-icon-info-filled': markRaw(InfoFilled),
+  'el-icon-document': markRaw(Document),
+  'el-icon-menu': markRaw(MenuIcon),
+  'el-icon-avatar': markRaw(Avatar),
+  'el-icon-lock': markRaw(Lock),
+  'el-icon-tools': markRaw(Tools),
+}
+
+// 获取图标组件
+const getIconComponent = (iconName: string | undefined) => {
+  if (!iconName) return HomeFilled
+  return iconMap[iconName] || HomeFilled
+}
+
+// 侧边栏菜单（parent_id=0的一级目录及其子菜单）
+const sideMenus = computed(() => {
+  return menus.value.filter(menu => menu.parentId === 0 && menu.visible === 1)
+})
+
+// 顶部菜单（parent_id=-1的菜单显示在右上角）
+const topMenus = computed(() => {
+  return menus.value.filter(menu => menu.parentId === -1 && menu.visible === 1)
+})
+
+// 初始化加载菜单
+onMounted(() => {
+  menus.value = getUserMenus()
+  // 如果没有菜单数据，可能需要重新登录
+  if (menus.value.length === 0) {
+    ElMessage.warning('请先登录')
+    router.push('/')
+  }
+})
 
 // 退出登录处理函数
 const handleLogout = () => {

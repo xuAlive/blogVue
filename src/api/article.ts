@@ -8,6 +8,7 @@ import { getAccount } from '../utils/userInfo'
 export interface ArticleParams {
   account?: string
   title: string
+  intro?: string  // 文章简介
   content: string
   status: number  // 0: 暂存, 1: 发布, -1: 删除
   img?: string[]  // 图片地址数组
@@ -77,12 +78,14 @@ export const createOrUpdateArticle = async (params: ArticleParams) => {
  * 保存草稿
  * @param title 标题
  * @param content 内容
+ * @param intro 简介
  * @param img 图片数组
  */
-export const saveDraft = async (title: string, content: string, img: string[] = []) => {
+export const saveDraft = async (title: string, content: string, intro: string = '', img: string[] = []) => {
   return await createOrUpdateArticle({
     title,
     content,
+    intro,
     status: 0,
     img
   })
@@ -92,12 +95,14 @@ export const saveDraft = async (title: string, content: string, img: string[] = 
  * 发布文章
  * @param title 标题
  * @param content 内容
+ * @param intro 简介
  * @param img 图片数组
  */
-export const publishArticle = async (title: string, content: string, img: string[] = []) => {
+export const publishArticle = async (title: string, content: string, intro: string = '', img: string[] = []) => {
   return await createOrUpdateArticle({
     title,
     content,
+    intro,
     status: 1,
     img
   })
@@ -149,6 +154,56 @@ export const listArticle = async (page: number = 1, size: number = 10) => {
   } catch (error) {
     console.error('获取文章列表失败:', error)
     ElMessage.error('获取文章列表失败，请稍后重试')
+    return null
+  }
+}
+
+/**
+ * 获取博客广场文章列表（所有已发布文章）
+ * @param page 页码
+ * @param size 每页大小
+ * @param title 标题模糊搜索
+ * @returns 文章列表响应数据
+ */
+export const listPublicArticles = async (page: number = 1, size: number = 10, title?: string) => {
+  try {
+    const params: any = { page, size }
+    if (title) {
+      params.title = title
+    }
+    // 不传 account 查询所有已发布文章
+
+    const ret = await $get('/article/listArticle', params)
+
+    if (ret.code === 1) {
+      return ret.data as ArticleListResponse
+    } else {
+      ElMessage.error(ret.codeMessage || '获取文章列表失败')
+      return null
+    }
+  } catch (error) {
+    console.error('获取文章列表失败:', error)
+    return null
+  }
+}
+
+/**
+ * 获取文章详情
+ * @param id 文章ID
+ * @returns 文章详情
+ */
+export const getArticleById = async (id: number) => {
+  try {
+    const ret = await $get('/article/getArticleById', { id })
+
+    if (ret.code === 1) {
+      return ret.data as Article
+    } else {
+      ElMessage.error(ret.codeMessage || '获取文章详情失败')
+      return null
+    }
+  } catch (error) {
+    console.error('获取文章详情失败:', error)
     return null
   }
 }

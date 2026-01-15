@@ -3,11 +3,18 @@ declare global {
   interface Window {
     __APP_CONFIG__?: {
       API_BASE_URL?: string
+      LOGIN_BG_INDEX?: number
+      LOGIN_BG_IMAGES?: string[]
     }
   }
 }
 
-export const baseURL_test: string =
-  window.__APP_CONFIG__?.API_BASE_URL ||
-  import.meta.env.VITE_API_BASE_URL ||
-  'http://127.0.0.1:6101/blog'
+// 使用函数获取，确保在运行时读取 config.js 的值
+export function getBaseURL(): string {
+  return window.__APP_CONFIG__?.API_BASE_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    '/blog'
+}
+
+// 兼容旧代码，但改为 getter 延迟求值
+export const baseURL_test: string = getBaseURL()

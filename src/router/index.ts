@@ -23,6 +23,11 @@ const router = createRouter(<RouterOptions>{
                     component: () => import('../views/home/home.vue')
                 },
                 {
+                    path: 'articleDetail/:id',
+                    meta: {title: '文章详情'},
+                    component: () => import('../views/home/articleDetail.vue')
+                },
+                {
                     path: 'miniapp',
                     meta: {title: '小程序'},
                     component: () => import('../views/miniapp.vue')

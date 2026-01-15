@@ -1,17 +1,7 @@
 <template>
-  <div class="login">
-    <!-- 左侧品牌区域 -->
-    <div class="brand-section">
-      <div class="brand-container">
-        <div class="background-text">博客</div>
-        <div class="main-character">徐</div>
-      </div>
-    </div>
-
-    <!-- 右侧登录区域 -->
-    <div class="login-section">
-      <div class="login-box">
-        <h2>欢迎登录</h2>
+  <div class="login" :style="{ backgroundImage: `url(${loginBgUrl})` }">
+    <div class="login-box">
+      <h2>欢迎登录</h2>
         <el-form
             size="large"
             ref="formRef"
@@ -34,7 +24,6 @@
             <el-button @click="handleRegister(formRef)" style="width: 100%">注册</el-button>
           </el-form-item>
         </el-form>
-      </div>
     </div>
   </div>
 </template>
@@ -42,7 +31,7 @@
 
 
 // 导入组合式api
-import {reactive, ref} from 'vue'
+import {reactive, ref, computed} from 'vue'
 // 导入element-plus的类型
 import type {FormInstance, FormRules} from 'element-plus'
 // 导入请求api
@@ -52,6 +41,14 @@ import {$register} from "../api/login";
 import {useRouter} from "vue-router";
 // 返回路由器对象
 const router = useRouter();
+
+// 获取登录背景图片URL
+const loginBgUrl = computed(() => {
+  const config = (window as any).__APP_CONFIG__ || {}
+  const images = config.LOGIN_BG_IMAGES || []
+  const index = (config.LOGIN_BG_INDEX || 1) - 1
+  return images[index] || ''
+})
 
 // 定义一个ref绑定表单
 const formRef = ref<FormInstance>()
@@ -124,84 +121,59 @@ const handleRegister = (formEl: FormInstance | undefined) => {
 </script>
 <style scoped lang="sass">
 .login
-  width: 100vw
-  height: 100vh
-  background: #e8f4f8
+  position: fixed
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+  width: 100%
+  height: 100%
+  margin: 0
+  padding: 0
+  background-color: #e8f4f8
+  background-size: 100% 100%
+  background-position: center
+  background-repeat: no-repeat
   display: flex
-  flex-direction: row
+  justify-content: flex-end
+  align-items: center
+  overflow: hidden
 
-  .brand-section
-    flex: 1
-    display: flex
-    justify-content: center
-    align-items: center
-    position: relative
+  .login-box
+    width: 400px
+    padding: 40px
+    margin-right: 100px
+    background: rgba(255, 255, 255, 0.9)
+    border-radius: 12px
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2)
 
-    .brand-container
-      position: relative
-      display: flex
-      justify-content: center
-      align-items: center
+    h2
+      color: #2c5282
+      font-size: 28px
+      text-align: center
+      margin-bottom: 30px
+      font-weight: 600
 
-      .background-text
-        position: absolute
-        font-size: 180px
-        font-weight: bold
-        color: rgba(100, 149, 237, 0.15)
-        z-index: 1
-        letter-spacing: 20px
-        user-select: none
+    ::v-deep .el-form-item__label
+      color: #4a5568
+      font-weight: 500
 
-      .main-character
-        position: relative
-        font-size: 280px
-        font-family: xiaxingkai, cursive
-        color: #2c5282
-        z-index: 2
-        text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.1)
-        user-select: none
+    ::v-deep .el-input__wrapper
+      border-radius: 8px
 
-  .login-section
-    flex: 1
-    display: flex
-    justify-content: center
-    align-items: center
-    background: rgba(255, 255, 255, 0.3)
+    ::v-deep .el-button--primary
+      background: #4299e1
+      border-color: #4299e1
+      border-radius: 8px
+      height: 44px
+      font-size: 16px
+      &:hover
+        background: #3182ce
+        border-color: #3182ce
 
-    .login-box
-      width: 400px
-      padding: 40px
-      background: white
-      border-radius: 12px
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1)
-
-      h2
-        color: #2c5282
-        font-size: 28px
-        text-align: center
-        margin-bottom: 30px
-        font-weight: 600
-
-      ::v-deep .el-form-item__label
-        color: #4a5568
-        font-weight: 500
-
-      ::v-deep .el-input__wrapper
-        border-radius: 8px
-
-      ::v-deep .el-button--primary
-        background: #4299e1
-        border-color: #4299e1
-        border-radius: 8px
-        height: 44px
-        font-size: 16px
-        &:hover
-          background: #3182ce
-          border-color: #3182ce
-
-      ::v-deep .el-button--default
-        border-radius: 8px
-        height: 44px
-        font-size: 16px
+    ::v-deep .el-button--default
+      border-radius: 8px
+      height: 44px
+      font-size: 16px
 
 </style>

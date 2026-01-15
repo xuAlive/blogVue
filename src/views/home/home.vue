@@ -1,69 +1,123 @@
 <template>
-  <div class="blog-home">
+  <div class="zhihu-home">
     <!-- 顶部导航栏 -->
     <div class="header">
       <h1 class="title">博客广场</h1>
-      <el-button type="primary" @click="goToMyBlog" class="my-blog-btn">
-        我的博客
+      <div class="search-box">
+        <el-input
+          v-model="searchTitle"
+          placeholder="搜索文章..."
+          clearable
+          @keyup.enter="handleSearch"
+          @clear="handleSearch"
+          class="search-input"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+      </div>
+      <el-button type="primary" @click="goToPublish" class="publish-btn">
+        <el-icon><EditPen /></el-icon>
+        写文章
       </el-button>
     </div>
 
     <!-- 主内容区域 -->
     <div class="main-content">
       <!-- 左侧博客列表 -->
-      <div class="blog-list">
-        <el-card v-for="blog in blogList" :key="blog.id" class="blog-card" shadow="hover">
-          <div class="blog-item">
-            <div class="blog-header">
-              <h3 class="blog-title">{{ blog.title }}</h3>
-              <span class="blog-date">{{ formatDate(blog.date) }}</span>
+      <div class="feed-list" v-loading="loading">
+        <div
+          v-for="article in blogList"
+          :key="article.id"
+          class="feed-item"
+          @click="goToDetail(article.id)"
+        >
+          <div class="feed-content">
+            <!-- 作者信息 -->
+            <div class="author-info">
+              <el-avatar :size="24" class="avatar">
+                {{ (article.account || 'U').charAt(0).toUpperCase() }}
+              </el-avatar>
+              <span class="author-name">{{ article.account }}</span>
+              <span class="separator">·</span>
+              <span class="publish-time">{{ formatTime(article.createTime) }}</span>
             </div>
-            <p class="blog-author">作者：{{ blog.author }}</p>
-            <p class="blog-description">{{ blog.description }}</p>
-            <div class="blog-footer">
-              <el-tag size="small" type="info">{{ blog.category }}</el-tag>
-              <div class="blog-stats">
-                <span><i class="el-icon-view"></i> {{ blog.views }}</span>
-                <span><i class="el-icon-chat-line-round"></i> {{ blog.comments }}</span>
-              </div>
+
+            <!-- 文章标题 -->
+            <h2 class="article-title">{{ article.title }}</h2>
+
+            <!-- 文章摘要 -->
+            <p class="article-excerpt">
+              {{ article.intro || getExcerpt(article.content) }}
+            </p>
+
+            <!-- 底部操作栏 -->
+            <div class="article-actions">
+              <span class="action-item">
+                <el-icon><View /></el-icon>
+                阅读全文
+              </span>
             </div>
           </div>
-        </el-card>
 
-        <!-- 加载更多 -->
-        <div class="load-more" v-if="hasMore">
-          <el-button @click="loadMore" :loading="loading">加载更多</el-button>
+          <!-- 右侧封面图 -->
+          <div v-if="getCoverImage(article.img)" class="feed-cover">
+            <img :src="getCoverImage(article.img)" alt="封面" />
+          </div>
+        </div>
+
+        <!-- 空状态 -->
+        <el-empty v-if="blogList.length === 0 && !loading" description="暂无文章">
+          <el-button type="primary" @click="goToPublish">发布第一篇文章</el-button>
+        </el-empty>
+
+        <!-- 分页 -->
+        <div class="pagination" v-if="total > pageSize">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :total="total"
+            layout="prev, pager, next"
+            @current-change="handlePageChange"
+            background
+          />
         </div>
       </div>
 
       <!-- 右侧评论区 -->
-      <div class="comments-section">
-        <el-card class="comments-card">
-          <template #header>
-            <div class="card-header">
-              <span>最新评论</span>
-              <el-badge :value="commentList.length" class="badge" />
-            </div>
-          </template>
+      <div class="sidebar">
+        <div class="sidebar-card">
+          <div class="card-header">
+            <span class="card-title">最新评论</span>
+            <el-badge :value="commentList.length" :max="99" />
+          </div>
 
           <div class="comments-list">
-            <div v-for="comment in commentList" :key="comment.id" class="comment-item">
-              <div class="comment-avatar">
-                <el-avatar :size="40">{{ comment.author.charAt(0) }}</el-avatar>
-              </div>
-              <div class="comment-content">
-                <div class="comment-header">
-                  <span class="comment-author">{{ comment.author }}</span>
-                  <span class="comment-time">{{ formatTime(comment.time) }}</span>
+            <div
+              v-for="comment in commentList"
+              :key="comment.id"
+              class="comment-item"
+              @click="goToDetail(comment.articleId)"
+            >
+              <el-avatar :size="32" class="comment-avatar">
+                {{ (comment.commenterName || comment.commenterAccount || 'U').charAt(0) }}
+              </el-avatar>
+              <div class="comment-body">
+                <div class="comment-meta">
+                  <span class="commenter">{{ comment.commenterName || comment.commenterAccount }}</span>
+                  <span class="comment-time">{{ formatTime(comment.createTime) }}</span>
                 </div>
                 <p class="comment-text">{{ comment.content }}</p>
-                <div class="comment-blog-title">
-                  来自：<span>{{ comment.blogTitle }}</span>
+                <div class="comment-source">
+                  <el-icon><Document /></el-icon>
+                  {{ truncate(comment.articleTitle, 20) }}
                 </div>
               </div>
             </div>
+            <el-empty v-if="commentList.length === 0" description="暂无评论" :image-size="60" />
           </div>
-        </el-card>
+        </div>
       </div>
     </div>
   </div>
@@ -72,134 +126,85 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Search, EditPen, View, Document } from '@element-plus/icons-vue'
+import { listPublicArticles, Article } from '../../api/article'
+import { listLatestComments, Comment } from '../../api/comment'
 
 const router = useRouter()
 
+// 搜索和分页
+const searchTitle = ref('')
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const loading = ref(false)
+
 // 博客列表数据
-const blogList = ref([
-  {
-    id: 1,
-    title: 'Vue 3 组合式 API 最佳实践',
-    author: '张三',
-    date: '2025-03-15T10:30:00',
-    description: '深入探讨 Vue 3 组合式 API 的使用技巧，包括 ref、reactive、computed 等核心概念的实际应用场景...',
-    category: '前端开发',
-    views: 1234,
-    comments: 45
-  },
-  {
-    id: 2,
-    title: 'TypeScript 进阶指南',
-    author: '李四',
-    date: '2025-03-14T15:20:00',
-    description: '从基础到进阶，全面讲解 TypeScript 的类型系统、泛型、装饰器等高级特性，助你成为 TS 高手...',
-    category: '编程语言',
-    views: 2156,
-    comments: 67
-  },
-  {
-    id: 3,
-    title: 'Vite 构建优化实战',
-    author: '王五',
-    date: '2025-03-13T09:15:00',
-    description: '分享 Vite 项目构建优化的实用技巧，包括代码分割、懒加载、预渲染等方法，大幅提升应用性能...',
-    category: '工程化',
-    views: 987,
-    comments: 32
-  },
-  {
-    id: 4,
-    title: 'Element Plus 组件库使用心得',
-    author: '赵六',
-    date: '2025-03-12T14:40:00',
-    description: '总结了 Element Plus 在实际项目中的使用经验，包括主题定制、按需引入、常见问题解决方案...',
-    category: 'UI框架',
-    views: 1567,
-    comments: 28
-  },
-  {
-    id: 5,
-    title: 'Pinia 状态管理完全指南',
-    author: '钱七',
-    date: '2025-03-11T11:25:00',
-    description: 'Pinia 作为 Vue 3 官方推荐的状态管理库，本文详细介绍其核心概念和最佳实践...',
-    category: '状态管理',
-    views: 1890,
-    comments: 41
-  }
-])
+const blogList = ref<Article[]>([])
 
 // 评论列表数据
-const commentList = ref([
-  {
-    id: 1,
-    author: '小明',
-    content: '这篇文章写得太好了！对我帮助很大，特别是关于组合式 API 的部分。',
-    time: '2025-03-15T11:30:00',
-    blogTitle: 'Vue 3 组合式 API 最佳实践'
-  },
-  {
-    id: 2,
-    author: '小红',
-    content: '作者讲解得很清晰，示例代码也很实用，已经收藏了！',
-    time: '2025-03-15T11:15:00',
-    blogTitle: 'TypeScript 进阶指南'
-  },
-  {
-    id: 3,
-    author: '小刚',
-    content: '请问有源码示例吗？想参考学习一下。',
-    time: '2025-03-15T10:50:00',
-    blogTitle: 'Vite 构建优化实战'
-  },
-  {
-    id: 4,
-    author: '小丽',
-    content: '非常实用的技巧，解决了我项目中的性能问题，感谢分享！',
-    time: '2025-03-15T10:20:00',
-    blogTitle: 'Element Plus 组件库使用心得'
-  },
-  {
-    id: 5,
-    author: '小强',
-    content: 'Pinia 确实比 Vuex 简洁很多，学习成本也低。',
-    time: '2025-03-15T09:45:00',
-    blogTitle: 'Pinia 状态管理完全指南'
-  },
-  {
-    id: 6,
-    author: '小美',
-    content: '期待更多这样的高质量文章！',
-    time: '2025-03-15T09:30:00',
-    blogTitle: 'Vue 3 组合式 API 最佳实践'
-  },
-  {
-    id: 7,
-    author: '小华',
-    content: '代码示例很详细，跟着敲了一遍，收获满满。',
-    time: '2025-03-15T09:00:00',
-    blogTitle: 'TypeScript 进阶指南'
-  },
-  {
-    id: 8,
-    author: '小伟',
-    content: '这个优化方案在我的项目中实测有效，构建速度提升了30%！',
-    time: '2025-03-14T18:30:00',
-    blogTitle: 'Vite 构建优化实战'
+const commentList = ref<Comment[]>([])
+
+// 加载博客列表
+const loadBlogList = async () => {
+  loading.value = true
+  try {
+    const result = await listPublicArticles(currentPage.value, pageSize.value, searchTitle.value || undefined)
+    if (result) {
+      blogList.value = result.records
+      total.value = result.total
+    }
+  } finally {
+    loading.value = false
   }
-])
+}
 
-const loading = ref(false)
-const hasMore = ref(true)
+// 加载最新评论
+const loadComments = async () => {
+  commentList.value = await listLatestComments(10)
+}
 
-// 格式化日期
-const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+// 搜索
+const handleSearch = () => {
+  currentPage.value = 1
+  loadBlogList()
+}
+
+// 分页
+const handlePageChange = () => {
+  loadBlogList()
+  // 滚动到顶部
+  document.querySelector('.feed-list')?.scrollTo(0, 0)
+}
+
+// 获取封面图
+const getCoverImage = (img: string | null) => {
+  if (!img) return null
+  try {
+    const images = JSON.parse(img)
+    return images && images.length > 0 ? images[0] : null
+  } catch {
+    return null
+  }
+}
+
+// 获取文章摘要（从内容中提取）
+const getExcerpt = (content: string) => {
+  if (!content) return '暂无摘要'
+  // 移除 HTML 标签
+  const text = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ')
+  return text.length > 120 ? text.slice(0, 120) + '...' : text
+}
+
+// 截断文本
+const truncate = (text: string, length: number) => {
+  if (!text) return ''
+  return text.length > length ? text.slice(0, length) + '...' : text
 }
 
 // 格式化时间
 const formatTime = (timeStr: string) => {
+  if (!timeStr) return ''
   const now = new Date()
   const time = new Date(timeStr)
   const diff = now.getTime() - time.getTime()
@@ -209,229 +214,336 @@ const formatTime = (timeStr: string) => {
   const days = Math.floor(diff / 86400000)
 
   if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
-  if (hours < 24) return `${hours}小时前`
-  if (days < 7) return `${days}天前`
-  return formatDate(timeStr)
+  if (minutes < 60) return `${minutes} 分钟前`
+  if (hours < 24) return `${hours} 小时前`
+  if (days < 7) return `${days} 天前`
+  if (days < 30) return `${Math.floor(days / 7)} 周前`
+
+  const year = time.getFullYear()
+  const month = String(time.getMonth() + 1).padStart(2, '0')
+  const day = String(time.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
-// 加载更多
-const loadMore = () => {
-  loading.value = true
-  setTimeout(() => {
-    loading.value = false
-    // 模拟没有更多数据
-    hasMore.value = false
-  }, 1000)
+// 跳转到文章详情
+const goToDetail = (id: number) => {
+  router.push(`/index/articleDetail/${id}`)
 }
 
-// 跳转到我的博客
-const goToMyBlog = () => {
-  router.push('/index/blogInfo/myRecords')
+// 跳转到发布页
+const goToPublish = () => {
+  router.push('/index/blogInfo')
 }
 
 onMounted(() => {
-  // 组件加载时的初始化操作
+  loadBlogList()
+  loadComments()
 })
 </script>
 
-<style scoped lang="sass">
-.blog-home
-  height: 100%
-  display: flex
-  flex-direction: column
-  background: #f5f7fa
+<style scoped lang="scss">
+.zhihu-home {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f6f6f6;
 
-  .header
-    display: flex
-    justify-content: space-between
-    align-items: center
-    padding: 20px 30px
-    background: white
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05)
+  // 顶部导航栏
+  .header {
+    display: flex;
+    align-items: center;
+    padding: 16px 24px;
+    background: #fff;
+    border-bottom: 1px solid #f0f0f0;
 
-    .title
-      font-size: 28px
-      font-weight: 600
-      color: #2c5282
-      margin: 0
-      font-family: xiaxingkai, cursive
+    .title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin: 0;
+      font-family: xiaxingkai, cursive;
+    }
 
-    .my-blog-btn
-      background: #4299e1
-      border-color: #4299e1
-      &:hover
-        background: #3182ce
-        border-color: #3182ce
+    .search-box {
+      flex: 1;
+      max-width: 400px;
+      margin: 0 32px;
 
-  .main-content
-    flex: 1
-    display: flex
-    gap: 20px
-    padding: 20px
-    overflow: hidden
+      .search-input {
+        :deep(.el-input__wrapper) {
+          background: #f6f6f6;
+          border-radius: 20px;
+          box-shadow: none;
 
-    .blog-list
-      flex: 1
-      overflow-y: auto
-      padding-right: 10px
+          &:hover, &:focus-within {
+            background: #fff;
+            box-shadow: 0 0 0 1px #1890ff;
+          }
+        }
+      }
+    }
 
-      &::-webkit-scrollbar
-        width: 6px
+    .publish-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 20px;
+      padding: 10px 20px;
+    }
+  }
 
-      &::-webkit-scrollbar-thumb
-        background: #cbd5e0
-        border-radius: 3px
+  // 主内容区域
+  .main-content {
+    flex: 1;
+    display: flex;
+    gap: 24px;
+    padding: 24px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
 
-      &::-webkit-scrollbar-thumb:hover
-        background: #a0aec0
+    // 左侧文章列表
+    .feed-list {
+      flex: 1;
+      overflow-y: auto;
 
-      .blog-card
-        margin-bottom: 20px
-        transition: all 0.3s
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
 
-        &:hover
-          transform: translateY(-4px)
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1)
+      &::-webkit-scrollbar-thumb {
+        background: #d9d9d9;
+        border-radius: 3px;
+      }
 
-      .blog-item
-        .blog-header
-          display: flex
-          justify-content: space-between
-          align-items: center
-          margin-bottom: 10px
+      // 文章卡片
+      .feed-item {
+        display: flex;
+        gap: 16px;
+        padding: 20px;
+        background: #fff;
+        border-radius: 4px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: box-shadow 0.2s;
 
-          .blog-title
-            font-size: 20px
-            font-weight: 600
-            color: #2d3748
-            margin: 0
-            cursor: pointer
+        &:hover {
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
-            &:hover
-              color: #4299e1
+          .article-title {
+            color: #1890ff;
+          }
+        }
 
-          .blog-date
-            font-size: 14px
-            color: #a0aec0
+        .feed-content {
+          flex: 1;
+          min-width: 0;
 
-        .blog-author
-          font-size: 14px
-          color: #718096
-          margin: 8px 0
+          .author-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #8590a6;
 
-        .blog-description
-          font-size: 15px
-          color: #4a5568
-          line-height: 1.6
-          margin: 12px 0
+            .avatar {
+              background: #1890ff;
+              color: #fff;
+              font-size: 12px;
+            }
 
-        .blog-footer
-          display: flex
-          justify-content: space-between
-          align-items: center
-          margin-top: 15px
-          padding-top: 15px
-          border-top: 1px solid #e2e8f0
+            .author-name {
+              color: #1a1a1a;
+              font-weight: 500;
+            }
 
-          .blog-stats
-            display: flex
-            gap: 20px
-            font-size: 14px
-            color: #718096
+            .separator {
+              color: #d9d9d9;
+            }
+          }
 
-            span
-              display: flex
-              align-items: center
-              gap: 5px
+          .article-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin: 0 0 10px 0;
+            line-height: 1.5;
+            transition: color 0.2s;
 
-      .load-more
-        text-align: center
-        padding: 20px 0
+            // 限制两行
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
 
-    .comments-section
-      width: 360px
-      flex-shrink: 0
+          .article-excerpt {
+            font-size: 14px;
+            color: #8590a6;
+            line-height: 1.7;
+            margin: 0 0 12px 0;
 
-      .comments-card
-        height: 100%
-        display: flex
-        flex-direction: column
+            // 限制两行
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
 
-        .card-header
-          display: flex
-          align-items: center
-          justify-content: space-between
-          font-size: 18px
-          font-weight: 600
-          color: #2d3748
+          .article-actions {
+            display: flex;
+            align-items: center;
+            gap: 24px;
 
-        ::v-deep .el-card__body
-          flex: 1
-          overflow: hidden
-          padding: 0
+            .action-item {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 13px;
+              color: #8590a6;
+              transition: color 0.2s;
 
-        .comments-list
-          height: 100%
-          overflow-y: auto
-          padding: 20px
+              &:hover {
+                color: #1890ff;
+              }
+            }
+          }
+        }
 
-          &::-webkit-scrollbar
-            width: 6px
+        .feed-cover {
+          width: 160px;
+          height: 108px;
+          flex-shrink: 0;
+          border-radius: 4px;
+          overflow: hidden;
 
-          &::-webkit-scrollbar-thumb
-            background: #cbd5e0
-            border-radius: 3px
+          img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+        }
+      }
 
-          &::-webkit-scrollbar-thumb:hover
-            background: #a0aec0
+      .pagination {
+        text-align: center;
+        padding: 24px 0;
+      }
+    }
 
-          .comment-item
-            display: flex
-            gap: 12px
-            margin-bottom: 20px
-            padding-bottom: 20px
-            border-bottom: 1px solid #e2e8f0
+    // 右侧边栏
+    .sidebar {
+      width: 300px;
+      flex-shrink: 0;
 
-            &:last-child
-              border-bottom: none
+      .sidebar-card {
+        background: #fff;
+        border-radius: 4px;
+        overflow: hidden;
 
-            .comment-avatar
-              flex-shrink: 0
+        .card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 20px;
+          border-bottom: 1px solid #f0f0f0;
 
-            .comment-content
-              flex: 1
+          .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+          }
+        }
 
-              .comment-header
-                display: flex
-                justify-content: space-between
-                align-items: center
-                margin-bottom: 8px
+        .comments-list {
+          max-height: 500px;
+          overflow-y: auto;
 
-                .comment-author
-                  font-weight: 600
-                  color: #2d3748
-                  font-size: 14px
+          &::-webkit-scrollbar {
+            width: 4px;
+          }
 
-                .comment-time
-                  font-size: 12px
-                  color: #a0aec0
+          &::-webkit-scrollbar-thumb {
+            background: #d9d9d9;
+            border-radius: 2px;
+          }
 
-              .comment-text
-                font-size: 14px
-                color: #4a5568
-                line-height: 1.6
-                margin: 8px 0
+          .comment-item {
+            display: flex;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
 
-              .comment-blog-title
-                font-size: 12px
-                color: #718096
-                margin-top: 8px
+            &:last-child {
+              border-bottom: none;
+            }
 
-                span
-                  color: #4299e1
-                  cursor: pointer
+            &:hover {
+              background: #fafafa;
+            }
 
-                  &:hover
-                    text-decoration: underline
+            .comment-avatar {
+              flex-shrink: 0;
+              background: #52c41a;
+              color: #fff;
+              font-size: 12px;
+            }
+
+            .comment-body {
+              flex: 1;
+              min-width: 0;
+
+              .comment-meta {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 6px;
+
+                .commenter {
+                  font-size: 14px;
+                  font-weight: 500;
+                  color: #1a1a1a;
+                }
+
+                .comment-time {
+                  font-size: 12px;
+                  color: #8590a6;
+                }
+              }
+
+              .comment-text {
+                font-size: 13px;
+                color: #595959;
+                line-height: 1.6;
+                margin: 0 0 8px 0;
+
+                // 限制两行
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+              }
+
+              .comment-source {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 12px;
+                color: #8590a6;
+
+                .el-icon {
+                  font-size: 14px;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
 </style>
