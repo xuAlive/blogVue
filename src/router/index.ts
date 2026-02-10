@@ -81,6 +81,16 @@ const router = createRouter(<RouterOptions>{
                     path: 'permissionManage',
                     meta: {title: '权限管理'},
                     component: () => import('../views/system/permissionManage.vue')
+                },
+                {
+                    path: 'schedule',
+                    meta: {title: '排班系统'},
+                    component: () => import('../views/apps/ScheduleApp.vue')
+                },
+                {
+                    path: 'calendar',
+                    meta: {title: '日程管理'},
+                    component: () => import('../views/apps/CalendarApp.vue')
                 }
             ]
         }

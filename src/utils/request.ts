@@ -18,7 +18,11 @@ const TOKEN_SIGN_KEY = "xuBlog!@#123"
 instance.interceptors.request.use(
     config => {
         // 动态设置 baseURL，确保读取到 config.js 的值
-        config.baseURL = getBaseURL()
+        // 对于 /schedule 和 /calendar 开头的请求，不设置 baseURL，避免路径被拼接成 /blog/schedule/xxx
+        const url = config.url || ''
+        if (!url.startsWith('/schedule') && !url.startsWith('/calendar')) {
+            config.baseURL = getBaseURL()
+        }
 
         // 每次请求都重新获取和加密token，确保token是最新的
         const storedToken = getToken()

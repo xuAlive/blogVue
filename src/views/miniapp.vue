@@ -39,7 +39,11 @@ import {
   Calendar,
   ShoppingCart,
   Picture,
-  HomeFilled
+  HomeFilled,
+  Clock,
+  DataBoard,
+  Bell,
+  Notebook
 } from '@element-plus/icons-vue'
 import { getMiniappList, type Miniapp } from '../api/miniapp'
 
@@ -55,6 +59,10 @@ const iconMap: Record<string, any> = {
   'Calendar': markRaw(Calendar),
   'ShoppingCart': markRaw(ShoppingCart),
   'Picture': markRaw(Picture),
+  'Clock': markRaw(Clock),
+  'DataBoard': markRaw(DataBoard),
+  'Bell': markRaw(Bell),
+  'Notebook': markRaw(Notebook),
 }
 
 // 获取图标组件
